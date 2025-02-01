@@ -6,6 +6,7 @@ player_markers = {
 }
 
 #There's almost certainly a better way to input predictions...
+#WARNING: do not use player name: "Average"
 predictions_wk1 = {
     "player1":{
         ("France","Ireland"):(25,32),

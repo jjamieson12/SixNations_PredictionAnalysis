@@ -55,3 +55,21 @@ def calc_trysq(games,predictions,FinalScore,win_SF=0.9,do_norm=True) -> dict:
     variances["down"] = variances_down
     variances["combined"] = variances_comb
     return try_sq,variances
+
+def calculate_average_prediction(predictions):
+    average_predictions = {}
+    is_first = True #Need to get the games first
+    for player,preds in predictions.items():
+        for game,pred in preds.items():
+            if is_first:
+                average_predictions[game] = np.array(pred)
+            else:
+                average_predictions[game] = np.vstack([average_predictions[game],pred])
+        is_first = False
+    
+    predictions["Average"] = {}
+    for game,pred in average_predictions.items():
+        predictions["Average"][game] = np.mean(pred,axis=0)
+    
+
+

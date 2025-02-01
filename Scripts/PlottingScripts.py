@@ -68,8 +68,8 @@ def draw_winloss_line(ax,y_wins,is_draw):
         cols = ['red','green']
     if is_draw:
         cols = ['black','black']
-    win_line = ax.axline((start_p,start_p-0.15),(end_p,end_p-0.15), linestyle='-', linewidth=3, color=cols[0], alpha=1)
-    lose_line = ax.axline((start_p,start_p+0.15),(end_p,end_p+0.15), linestyle='-', linewidth=3, color=cols[1], alpha=1)
+    ax.axline((start_p,start_p-0.15),(end_p,end_p-0.15), linestyle='-', linewidth=3, color=cols[0], alpha=1)
+    ax.axline((start_p,start_p+0.15),(end_p,end_p+0.15), linestyle='-', linewidth=3, color=cols[1], alpha=1)
     x_ext = ax.get_xlim()[1] - ax.get_xlim()[0]
     y_ext = ax.get_ylim()[1] - ax.get_ylim()[0]
     ax_ratio = x_ext/y_ext
@@ -97,16 +97,23 @@ def draw_winloss_line(ax,y_wins,is_draw):
 #markers -> Dictionary mapping player_name to marker image
 #FinalScore -> Final scores for each match (Optional)
 #Nexpected -> How many expected limit areas to plot [default=3]
-def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_winloss=True, axis_lims=[-1,-1,-1,-1],offsets=[5,5,5,10]):
+def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_average=True,show_winloss=True, axis_lims=[-1,-1,-1,-1],offsets=[5,5,5,10]):
     for game_number,ax in enumerate(axs):
         all_x = []
         all_y = []
         game = games[game_number]
+        avg_pred = None #instantiating average prediction marker in case its needed
         for name,prediction in predictions.items():
-            all_x.append(prediction[game][0])
-            all_y.append(prediction[game][1])
-            ax.scatter(prediction[game][0],prediction[game][1], 0)
-            imscatter(prediction[game][0], prediction[game][1], markers[name][0], zoom=markers[name][1], ax=ax, opacity=1)
+            if name == "Average":
+                if show_average:
+                    all_x.append(prediction[game][0])
+                    all_y.append(prediction[game][1])
+                    avg_pred = [prediction[game][0],prediction[game][1]] #Don't draw yet to ensure ordering is correct
+            else:
+                all_x.append(prediction[game][0])
+                all_y.append(prediction[game][1])
+                ax.scatter(prediction[game][0],prediction[game][1], 0)
+                imscatter(prediction[game][0], prediction[game][1], markers[name][0], zoom=markers[name][1], ax=ax, opacity=1)
         if FinalScore:
             all_x.append(FinalScore[game][0]+14)
             all_x.append(FinalScore[game][0]-14)
@@ -127,17 +134,28 @@ def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_
             patches,labs = makepatches(FinalScore[game])
             for p in reversed(range(Nexpected)): #plot patches in reverse for correct ordering
                 ax.add_patch(patches[p])
-            fs = ax.scatter(FinalScore[game][0],FinalScore[game][1],500,"red",marker="*")
+            fs = ax.scatter(FinalScore[game][0],FinalScore[game][1],500,"red",edgecolors='black',marker="*",zorder=4)
             handles=[fs]
             labels=["Final score"]
+            if show_average and not avg_pred == None:
+                poc = ax.scatter(avg_pred[0],avg_pred[1],500,"gray",edgecolors='black',marker="*",zorder=3)
+                handles.append(poc)
+                labels.append("Average prediction")
             for p in range(Nexpected):
                 handles.append(patches[p])
                 labels.append(labs[p])
             ax.legend(handles=handles,labels=labels,fontsize=16)
-        if (show_winloss and FinalScore):
-            y_wins = FinalScore[game][1] > FinalScore[game][0]
-            is_draw = FinalScore[game][1] == FinalScore[game][0]
-            draw_winloss_line(ax,y_wins,is_draw)
+            if (show_winloss): #Put line between sigma patches and score markers
+                y_wins = FinalScore[game][1] > FinalScore[game][0]
+                is_draw = FinalScore[game][1] == FinalScore[game][0]
+                draw_winloss_line(ax,y_wins,is_draw)
+
+        elif show_average and not avg_pred == None:
+            poc = ax.scatter(avg_pred[0],avg_pred[1],500,"blue",marker="*",zorder=2)
+            handles=[poc]
+            labels=["Average prediction"]
+            ax.legend(handles=handles,labels=labels,fontsize=16)
+
 
 #Make Try^2 Ranking plot for each game
 #Options:
@@ -149,20 +167,25 @@ def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_
 #win_SF -> Float for the extra scale-factor applied to Try^2 if prediction corectly picks winner, 1 if not [default = 0.9]
 #week -> Week number for plot title [default = 1]
 #draw_markers -> Whether to draw markers for each prediction [default = True]
-def plot_ranking(axs,games,predictions,markers,FinalScore,win_SF=0.9,week=1,draw_markers=True):
+def plot_ranking(axs,games,predictions,markers,FinalScore,win_SF=0.9,week=1,draw_markers=True,show_average=True):
     try_sq, variances = calc_trysq(games,predictions,FinalScore,win_SF=win_SF,do_norm=True)
 
     for game_number,ax in enumerate(axs):
         game = games[game_number]
         iter=1
         for name,trySQ in try_sq[game].items():
+            if name == "Average" and not show_average:
+                continue
             ax.barh(iter+0.05,variances["up"][name][game],height=0.45,color='xkcd:cobalt blue')
             ax.barh(iter-0.05,variances["down"][name][game],height=0.45,color='goldenrod')
             ax.errorbar(variances["combined"][name][game], iter, xerr=1.0/variances["average"][game], fmt="o",color='xkcd:red',ecolor='grey',ms=10)
             ax.text(1.2,iter,"Try${}^{2}$ = "+str(round(trySQ,2)),size=15)
-            ax.text(-1.5,iter,str(name),size=15)
+            ax.text(-1.5,iter,str(name),size=15,verticalalignment='center')
             if draw_markers:
-                imscatter(-1.8, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
+                if name == "Average":
+                    ax.scatter(-1.8,iter,1500,"gray",edgecolors='black',marker="*")
+                else:
+                    imscatter(-1.8, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
             iter+=1
 
         ax.set_xlim(-2,2)
@@ -187,7 +210,7 @@ def plot_ranking(axs,games,predictions,markers,FinalScore,win_SF=0.9,week=1,draw
 #markers -> Dictionary mapping player_name to marker image
 #FinalScore -> Final scores for each match (Optional)
 #leg_offset -> Float to offset legend above y-axis limit
-def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,draw_markers=True,leg_offset=0.865):
+def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,draw_markers=True,show_average=True,leg_offset=0.865):
     for week_number,ax in enumerate(axs):
         if (week_number+1) == axs.size: 
             week = "All"
@@ -213,10 +236,14 @@ def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,dra
         ax.add_patch(rect_2sigma)
         ax.add_patch(rect_1sigma)
         for name in names:
+            if name == "Average" and not show_average: continue
             ax.errorbar(try_sq[week]["combined"][name], iter, xerr=err*try_sq[week]["combined"][name], fmt="o", color='xkcd:black',ecolor='grey',ms=15)
-            ax.text(-0.7,iter,str(name),size=15)
+            ax.text(-0.7,iter,str(name),size=15,verticalalignment='center')
             if draw_markers:
-                imscatter(-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
+                if name == "Average":
+                    ax.scatter(-1.0,iter,1500,"gray",edgecolors='black',marker="*")
+                else:
+                    imscatter(-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
             iter+=1
 
         ax.set_xlim(-1.25,1.25)
@@ -238,6 +265,7 @@ def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,dra
 
 
 #Make Overall Try^2 Ranking plot for each week and the full tournament
+#ToDo: Add errors
 #Options:
 #axs -> N suplots, one for each match
 #game_info -> #game information for all weeks, Shape is: game_info["WeekX"]: [ [list_of_games_as_string_tuple],{predictions_dict},{final_score_dict} ]
@@ -245,7 +273,7 @@ def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,dra
 #markers -> Dictionary mapping player_name to marker image
 #FinalScore -> Final scores for each match (Optional)
 #title_pad -> Float to pad title above y-axis limit
-def plot_trysq(axs,game_info,try_sq,markers,draw_markers=True,title_pad=15):
+def plot_trysq(axs,game_info,try_sq,markers,draw_markers=True,show_average=True,title_pad=15):
     for week_number,ax in enumerate(axs):
         if (week_number+1) == axs.size: 
             week = "All"
@@ -261,10 +289,14 @@ def plot_trysq(axs,game_info,try_sq,markers,draw_markers=True,title_pad=15):
         iter=1
         for name in names:
             if name not in try_sq[week]["combined"].keys():continue
+            if name == "Average" and not show_average: continue
             ax.errorbar(try_sq[week]["combined"][name], iter, xerr=0, fmt="o", color='xkcd:black',ecolor='grey',ms=15)
-            ax.text(-0.7,iter,str(name),size=15)
+            ax.text(-0.7,iter,str(name),size=15,verticalalignment='center')
             if draw_markers:
-                imscatter(-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
+                if name == "Average":
+                    ax.scatter(-1.0,iter,1500,"gray",edgecolors='black',marker="*")
+                else:
+                    imscatter(-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
             iter+=1
 
         ax.set_xlim(-1.25,1.25)
