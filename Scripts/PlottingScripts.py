@@ -4,7 +4,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.patches import Circle, Rectangle, Patch
 from matplotlib.lines import Line2D
 from .AnalysisScripts import calc_trysq
-from math import sqrt, ceil
+from math import sqrt, ceil, atan, degrees
 
 #Replace marker with scaled png (from: https://stackoverflow.com/a/22570069)
 def imscatter(x, y, image, ax=None, zoom=1, opacity=1):
@@ -41,6 +41,54 @@ def makepatches(score):
                                   )
     return ([threepoint_confidence,try_confidence,twotry_confidence],["$\pm$ 3-point expected","$\pm$ 1-try expected","$\pm$ 2-try expected"])
 
+#Masively overcomplicated way to get coordinates for printing text around skewed line (works 90% of the time, every time)
+def get_text_coords(y_wins,start_p,x_ext,y_ext,x_skew):
+    text_x = {}
+    text_y = {}
+    if y_wins:
+        text_x["Correct"] = start_p+(0.1*x_ext) # No skew just plot coords
+        text_y["Correct"] = text_x["Correct"]+(0.03*y_ext*x_skew) # Add a bit more above/below the line if highly skewed
+        text_x["Incorrect"] = start_p+(0.13*x_ext) # No skew just plot coords
+        text_y["Incorrect"] = text_x["Incorrect"]-(0.03*y_ext*x_skew) # Add a bit more above/below the line if highly skewed
+    else:
+        text_x["Correct"] = start_p+(0.12*x_ext) # No skew just plot coords
+        text_y["Correct"] = text_x["Correct"]-(0.03*y_ext*x_skew)
+        text_x["Incorrect"] = start_p+(0.085*x_ext) # No skew just plot coords
+        text_y["Incorrect"] = text_x["Incorrect"]+(0.03*y_ext*x_skew)
+    return text_x, text_y
+
+#Draw lines indicating where correct/incorrect winner+loser predictions lie in score plot
+#Angle for line text is complicated as both the x,y ranges and canvas height,width are asymmetric
+#This was my best attempt to make it work most of the time
+def draw_winloss_line(ax,y_wins,is_draw):
+    start_p = max([ax.get_xlim()[0],ax.get_ylim()[0]]) #Max of lower left points
+    end_p = min([ax.get_xlim()[1],ax.get_ylim()[1]]) #Min of upper right points
+    cols = ['green','red']
+    if y_wins:
+        cols = ['red','green']
+    if is_draw:
+        cols = ['black','black']
+    win_line = ax.axline((start_p,start_p-0.15),(end_p,end_p-0.15), linestyle='-', linewidth=3, color=cols[0], alpha=1)
+    lose_line = ax.axline((start_p,start_p+0.15),(end_p,end_p+0.15), linestyle='-', linewidth=3, color=cols[1], alpha=1)
+    x_ext = ax.get_xlim()[1] - ax.get_xlim()[0]
+    y_ext = ax.get_ylim()[1] - ax.get_ylim()[0]
+    ax_ratio = x_ext/y_ext
+    x_skew = max(ax_ratio,1) #Skew is calculated relative to the smaller axis range
+    y_skew = max(1/ax_ratio,1)
+    grad_skew = max(y_skew,x_skew)/min(y_skew,x_skew)
+
+    angle = 45+(degrees(atan(grad_skew-1))/2.0)
+    if y_wins:
+        angle = 45-(degrees(atan(1-(1/grad_skew)))/2.0)
+        angle *= 1.09 #Fudge as the canvas is not a perfect square
+
+    text_x,text_y = get_text_coords(y_wins,start_p,x_ext,y_ext,x_skew)
+    if not is_draw:
+        ax.text(text_x["Correct"],text_y["Correct"],"Correct winner",rotation=angle,size=15, color='green',horizontalalignment='center',verticalalignment='center')
+        ax.text(text_x["Incorrect"],text_y["Incorrect"],"Incorrect winner",rotation=angle,size=15, color='red',horizontalalignment='center',verticalalignment='center')
+
+
+
 #Make 2D score prediction plot for each game
 #Options:
 #axs -> N suplots, one for each match
@@ -49,7 +97,7 @@ def makepatches(score):
 #markers -> Dictionary mapping player_name to marker image
 #FinalScore -> Final scores for each match (Optional)
 #Nexpected -> How many expected limit areas to plot [default=3]
-def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,axis_lims=[-1,-1,-1,-1],offsets=[5,5,5,10]):
+def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_winloss=True, axis_lims=[-1,-1,-1,-1],offsets=[5,5,5,10]):
     for game_number,ax in enumerate(axs):
         all_x = []
         all_y = []
@@ -86,6 +134,10 @@ def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,axis_
                 handles.append(patches[p])
                 labels.append(labs[p])
             ax.legend(handles=handles,labels=labels,fontsize=16)
+        if (show_winloss and FinalScore):
+            y_wins = FinalScore[game][1] > FinalScore[game][0]
+            is_draw = FinalScore[game][1] == FinalScore[game][0]
+            draw_winloss_line(ax,y_wins,is_draw)
 
 #Make Try^2 Ranking plot for each game
 #Options:
