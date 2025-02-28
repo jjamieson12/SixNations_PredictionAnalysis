@@ -56,6 +56,94 @@ def calc_trysq(games,predictions,FinalScore,win_SF=0.9,do_norm=True) -> dict:
     variances["combined"] = variances_comb
     return try_sq,variances
 
+
+#Calculate average Try^2 and variances over several predictions with correct normalisation and errors
+#do_norm -> Normalise variances and Try^2 seperately
+#do_var_err -> Use both (abs) up and down variances for error calculation rather than Try^2 values (double statistics)
+def calc_trysq_avg(predictions,FinalScore,win_SF,do_norm,do_var_err):
+    variances_up = {}
+    variances_down = {}
+    try_sq = {}
+    variances = {"try_sq":{},"var_up":{},"var_down":{},"error":{}}
+
+    #First get all of the individual variances and Try^2 (Now normalise Try^2 seperately from variance)
+    for name,prediction in predictions.items():
+        variances_up[name] = []
+        variances_down[name] = []
+        try_sq[name] = []
+        for game, pred in prediction.items():
+            var_up = abs(pred[0] - FinalScore[game][0]) #Have to use absolute when averaging or we will get cancellations
+            var_down = abs(pred[1] - FinalScore[game][1])
+            variances_up[name].append(var_up)
+            variances_down[name].append(var_down)
+            win_pred = pred[0] - pred[1]
+            win_true = FinalScore[game][0] - FinalScore[game][1]
+            prediction_SF = win_SF if (np.sign(win_pred) == np.sign(win_true)) else 1
+            try_sq[name].append(((var_up+var_down)/2.0) * prediction_SF)
+
+    vartotal_up = [] #To calculate max
+    vartotal_down = []
+    try_sq_total = []
+    for name,pred in variances_up.items():
+        mean_absolute_variance_up = np.mean(np.array(pred))
+        mean_absolute_variance_down = np.mean(np.array(variances_down[name]))
+        mean_try_sq = np.mean(np.array(try_sq[name]))
+        variances["var_up"][name] = mean_absolute_variance_up
+        vartotal_up.append(mean_absolute_variance_up)
+        variances["var_down"][name] = mean_absolute_variance_down
+        vartotal_down.append(mean_absolute_variance_down)
+        variances["try_sq"][name] = mean_try_sq
+        try_sq_total.append(mean_try_sq)
+
+        #Lastly get errors
+        #If do_var_err = True, use absolute variances and do standard error on mean
+        #If do_var_err = False, use Try^2 values instead  
+        combined_vars = try_sq[name]
+        if do_var_err:
+            combined_vars = pred + variances_up[name]
+
+        std_dev = np.std(np.array(combined_vars), ddof=1)  # Sample standard deviation
+        variances["error"][name] = std_dev / np.sqrt(len(combined_vars))
+
+    #Normalise everything if required
+    if do_norm:
+        var_up_max = max(vartotal_up,key=abs)
+        var_down_max = max(vartotal_down,key=abs)
+        try_sq_max = max(try_sq_total,key=abs)
+        for name in variances["var_up"].keys():
+            variances["var_up"][name] *= 1.0/var_up_max
+            variances["var_down"][name] *= 1.0/var_down_max
+            variances["try_sq"][name] *= 1.0/try_sq_max
+            variances["error"][name] *= 1.0/try_sq_max
+
+    #Do ordering by largest Try^2        
+    variances["try_sq"] = dict(sorted(variances["try_sq"].items(), key=lambda item: item[1],reverse=True))
+    variances["var_up"] = dict(sorted(variances["var_up"].items(), key=lambda t2: variances["try_sq"][t2[0]],reverse=True))
+    variances["var_down"] = dict(sorted(variances["var_down"].items(), key=lambda t2: variances["try_sq"][t2[0]],reverse=True))
+    variances["error"] = dict(sorted(variances["error"].items(), key=lambda t2: variances["try_sq"][t2[0]],reverse=True))
+
+    return variances
+
+
+#Calculate goodness-of-prediction metric "Try^2" for each week and combined for the tournament (Lower is better)
+#Try^2 = Average_variance * WinSF where winSF is a modifyable parameter to favour picking the correct winner
+#Variance_up = Mean absolute variance in home-team predictions
+#Variance_down = Mean absolute variance in away-team predictions 
+#optionally normalised over largest individual player variance (or Try^2) for each week (ensures values are between 0 and 1)
+#Also calculates standard error on the mean for each player's distribution of (normalised) weekly predictions
+#Returns variances dictionary containing averaged: Try^2, up variance, down variance, and error for each player
+def calc_trysq_weekly(game_info,win_SF=0.9,do_norm=True,do_var_err=True) -> dict:
+
+    variances = {}
+    for week,info in game_info.items():
+        predictions = info[1]
+        FinalScore = info[2]
+        variances[week] = calc_trysq_avg(predictions,FinalScore,win_SF,do_norm,do_var_err)
+
+    #Sort the weeks, with "All" last
+    variances = dict(sorted(variances.items(), key=lambda wk:wk[0][-1]))
+    return variances
+
 def calculate_average_prediction(predictions):
     average_predictions = {}
     is_first = True #Need to get the games first

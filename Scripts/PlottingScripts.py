@@ -3,8 +3,10 @@ import numpy as np
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.patches import Circle, Rectangle, Patch
 from matplotlib.lines import Line2D
+from matplotlib.transforms import Bbox
+import matplotlib.ticker as mticker
 from .AnalysisScripts import calc_trysq
-from math import sqrt, ceil, atan, degrees
+from math import sqrt, atan, degrees
 
 #Replace marker with scaled png (from: https://stackoverflow.com/a/22570069)
 def imscatter(x, y, image, ax=None, zoom=1, opacity=1):
@@ -56,6 +58,38 @@ def get_text_coords(y_wins,start_p,x_ext,y_ext,x_skew):
         text_x["Incorrect"] = start_p+(0.085*x_ext) # No skew just plot coords
         text_y["Incorrect"] = text_x["Incorrect"]+(0.03*y_ext*x_skew)
     return text_x, text_y
+
+#Determine bboxes to crop individual figures out of subplots
+#bottom,top,left,right,wspace are default subplot params from: https://matplotlib.org/stable/users/explain/customizing.html#matplotlibrc-sample:~:text=show()%20is%20called.-,%23%23,-The%20figure%20subplot
+#Currently no treatment of multi-row subplots
+def get_fig_crops(n_figs,fig_x,fig_y,x_label=True,y_label=False,x_pad=0.015,y_pad=0.035,bottom=0.11,top=0.88,left=0.125,right=0.9,wspace=0.2,axis_pad=0.05):
+
+    LRpadding = x_pad*fig_x
+    UDpadding = y_pad*fig_y
+    wspace_abs = (((fig_x*right) - (fig_x*left) - 2*axis_pad*fig_x)/n_figs)*wspace
+    one_fig_width = ((fig_x*right) - (fig_x*left) - ((n_figs-1)*wspace_abs))/n_figs
+    x_label_extra = 0
+    y_label_extra = 0
+    if x_label:
+        y_label_extra = fig_y*0.035
+    if y_label:
+        x_label_extra = fig_x*0.015
+
+
+    custom_crops = []
+    for i in range(n_figs):
+        custom_crop = Bbox(np.array([[fig_x*left+(i*(one_fig_width+wspace_abs))-LRpadding-x_label_extra, fig_y*bottom-UDpadding-y_label_extra],
+                                     [fig_x*left+((i+1)*one_fig_width)+(i*wspace_abs)+LRpadding, fig_y*top+UDpadding]])) 
+        custom_crops.append(custom_crop)
+
+    return custom_crops
+
+#Lambda for matplotlib.ticker, replace negative tick labels with blank spaces
+def remove_negative_tick_labels(x, pos):
+    if x < 0:
+        return ''
+    else:
+        return x
 
 #Draw lines indicating where correct/incorrect winner+loser predictions lie in score plot
 #Angle for line text is complicated as both the x,y ranges and canvas height,width are asymmetric
@@ -167,29 +201,48 @@ def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_
 #win_SF -> Float for the extra scale-factor applied to Try^2 if prediction corectly picks winner, 1 if not [default = 0.9]
 #week -> Week number for plot title [default = 1]
 #draw_markers -> Whether to draw markers for each prediction [default = True]
-def plot_ranking(axs,games,predictions,markers,FinalScore,win_SF=0.9,week=1,draw_markers=True,show_average=True):
-    try_sq, variances = calc_trysq(games,predictions,FinalScore,win_SF=win_SF,do_norm=True)
+def plot_ranking(axs,games,predictions,markers,FinalScore,win_SF=0.9,week=1,draw_markers=True,show_average=True,do_norm=True):
+    
+    try_sq, variances = calc_trysq(games,predictions,FinalScore,win_SF=win_SF,do_norm=do_norm)
 
     for game_number,ax in enumerate(axs):
         game = games[game_number]
+
+        #Correctly size x-axis if data is not normalised
+        max_x = 1.0
+        if not do_norm:
+            #Find the x limits
+            all_x = []
+            for name,trySQ in try_sq[game].items():
+                if name == "Average" and not show_average:
+                    continue
+                all_x.append(abs(variances["up"][name][game]))
+                all_x.append(abs(variances["down"][name][game]))
+                all_x.append(trySQ)
+            max_x = max(all_x)
+        x_lim = max_x*2
+
         iter=1
         for name,trySQ in try_sq[game].items():
             if name == "Average" and not show_average:
                 continue
             ax.barh(iter+0.05,variances["up"][name][game],height=0.45,color='xkcd:cobalt blue')
             ax.barh(iter-0.05,variances["down"][name][game],height=0.45,color='goldenrod')
-            ax.errorbar(variances["combined"][name][game], iter, xerr=1.0/variances["average"][game], fmt="o",color='xkcd:red',ecolor='grey',ms=10)
-            ax.text(1.2,iter,"Try${}^{2}$ = "+str(round(trySQ,2)),size=15)
-            ax.text(-1.5,iter,str(name),size=15,verticalalignment='center')
+            ax.errorbar(trySQ, iter, xerr=1.0/variances["average"][game], fmt="o",color='xkcd:red',ecolor='black',ms=10,lw=4)
+            ax.text(max_x*1.2,iter,"Try${}^{2}$ = "+str(round(trySQ,2)),size=15)
+            ax.text(max_x*-1.5,iter,str(name),size=15,verticalalignment='center')
             if draw_markers:
                 if name == "Average":
-                    ax.scatter(-1.8,iter,1500,"gray",edgecolors='black',marker="*")
+                    ax.scatter(max_x*-1.8,iter,1500,"gray",edgecolors='black',marker="*")
                 else:
-                    imscatter(-1.8, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
+                    imscatter(max_x*-1.8, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
             iter+=1
 
-        ax.set_xlim(-2,2)
-        ax.set_xlabel("P-T/max(P-T)",size=15,labelpad=10)
+        ax.set_xlim(-x_lim,x_lim)
+        if do_norm:
+            ax.set_xlabel("P-T/max(P-T)",size=15,labelpad=10)
+        else:
+            ax.set_xlabel("P-T",size=15,labelpad=10)
         ax.tick_params(axis='x', which='major', labelsize=15)
         ax.axvline(0, linestyle='--', color='black', alpha=1)
         ax.axes.get_yaxis().set_visible(False)
@@ -198,24 +251,81 @@ def plot_ranking(axs,games,predictions,markers,FinalScore,win_SF=0.9,week=1,draw
     print("Combined try^2: ")
     print(try_sq["combined"])
 
+#Reproduce ranking plot but for individual weeks/entire tournament
+#Variances are now absolute, mean away team prediction goes to the left, home to the right
+def plot_tournament_ranking(axs,weekly_rankings,markers,draw_markers=True,show_average=True,do_norm=False):
+
+    ax_num=0
+    for week,rankings in weekly_rankings.items():
+        ax = axs[ax_num]
+        var_up = rankings["var_up"]
+        var_down = rankings["var_down"]
+        try_sq = rankings["try_sq"]
+        error = rankings["error"]
+
+        #Correctly size x-axis if data is not normalised
+        max_x = 1.0
+        if not do_norm:
+            #Find the x limits
+            all_x = []
+            for name,trySQ in try_sq.items():
+                if name == "Average" and not show_average:
+                    continue
+                all_x.append(var_up[name])
+                all_x.append(var_down[name])
+                all_x.append(trySQ)
+            max_x = max(all_x)
+        x_lim = max_x*2
+
+        iter=1
+        for name,trySQ in try_sq.items():
+            if name == "Average" and not show_average:
+                continue
+            ax.barh(iter,var_up[name],height=0.45,color='xkcd:cobalt blue')
+            ax.barh(iter,-1*var_down[name],height=0.45,color='goldenrod') #It's an abs value now, make sure it points left
+            ax.errorbar(trySQ, iter, xerr=error[name], fmt="o",color='xkcd:red',ecolor='black',ms=15,lw=4)
+            ax.text(max_x*1.2,iter,"Mean Try${}^{2}$ = "+str(round(trySQ,2)),size=15)
+            ax.text(max_x*-1.5,iter,str(name),size=15,verticalalignment='center')
+            if draw_markers:
+                if name == "Average":
+                    ax.scatter(max_x*-1.8,iter,1500,"gray",edgecolors='black',marker="*")
+                else:
+                    imscatter(max_x*-1.8, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
+            iter+=1
+
+        ax.set_xlim(-x_lim,x_lim)
+        if do_norm:
+            ax.set_xlabel(r"Away $\longleftarrow$            |P-T|/max(|P-T|)           $\longrightarrow$ Home",size=15,labelpad=10)
+        else:
+            ax.set_xlabel(r"Away $\longleftarrow$            |P-T|           $\longrightarrow$ Home",size=15,labelpad=10)
+        ax.tick_params(axis='x', which='major', labelsize=15)
+        ax.axvline(0, linestyle='--', color='black', alpha=1)
+        ax.axes.get_yaxis().set_visible(False)
+        ax.axes.spines[['top','right','left']].set_visible(False)
+        if week == "All":
+            ax.set_title("All games",size=22,pad=15)
+        else:
+            ax.set_title("Week {}".format(week[-1]),size=22,pad=15)
+
+        ax_num+=1
+
 
 #Make statistical significance plot for each week and the full tournament
 #Options:
 #axs -> N suplots, one for each match
-#n_toys -> Number of toys thrown to get correct error
+#n_toys -> Number of toys thrown to get correct error on average prediction
 #game_info -> #game information for all weeks, Shape is: game_info["WeekX"]: [ [list_of_games_as_string_tuple],{predictions_dict},{final_score_dict} ]
 #try_sq -> Try^2 values calculated per week, shape is: try_sq["WeekX"]:{'player1': Try^2, 'player2': Try^2,...}
 #mean_random -> Dictionary containing mean of all toy Try^2 values for each week
 #sigmas -> List of sigma bands calculated from toys
 #markers -> Dictionary mapping player_name to marker image
-#FinalScore -> Final scores for each match (Optional)
-#leg_offset -> Float to offset legend above y-axis limit
-def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,draw_markers=True,show_average=True,leg_offset=0.865):
-    for week_number,ax in enumerate(axs):
-        if (week_number+1) == axs.size: 
-            week = "All"
-        else:
-            week = "Week"+str(week_number+1)
+#bottom_pad -> How much space should be below the bottom marker in y-coord space (distance between markers = 1)
+#top_pad -> How much extra space should be above the top marker in y-coord space (distance between markers = 1)
+#title_pad -> Multiplicative padding factor for title to deal with different numbers of players, totl padding = title_pad*n_players)
+def plot_significance(axs,n_toys,game_info,try_sqs,errors,mean_random,sigmas,markers,draw_markers=True,show_average=True,do_norm=True,bottom_pad=0.5,top_pad=0.25,title_pad=2.5):
+    ax_num=0
+    for week,try_sq in try_sqs.items():
+        ax = axs[ax_num]
         avg = mean_random[week]
         oneS = sigmas[0][week]
         twoS = sigmas[1][week]
@@ -224,36 +334,52 @@ def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,dra
         names_unsorted = game_info[week][1].keys()
         diffs = {}
         for name in names_unsorted:
-            diffs[name] = avg-try_sq[week]["combined"][name]
+            diffs[name] = avg-try_sq[name]
         names = sorted(diffs, key=diffs.get)
+
+        max_x = 1.0
+        if not do_norm:
+            max_x = max(list(try_sq.values())+threeS)
+        x_lim = max_x*1.5
         
+        n_points = 1
+        for name in names:
+            if name == "Average" and not show_average: continue
+            n_points+=1
+
         iter=1
         err = (sqrt(n_toys))/n_toys
-        rect_1sigma = Rectangle((oneS, 0), 2*(avg-oneS), len(names)+0.9, linewidth=0, alpha=0.9, edgecolor='y', facecolor=(254/255.0,240/255.0,0.0))
-        rect_2sigma = Rectangle((twoS, 0), 2*(avg-twoS), len(names)+0.9, linewidth=0, alpha=0.9, edgecolor='g', facecolor=(30/255.0,255/255.0,4/255.0))
-        rect_3sigma = Rectangle((threeS, 0), 2*(avg-threeS), len(names)+0.9, linewidth=0, alpha=0.9, edgecolor='b', facecolor=(30/255.0,190/255.0,255/255.0))
+        rect_1sigma = Rectangle((oneS, 0), 2*(avg-oneS), n_points-1+top_pad, linewidth=0, alpha=0.9, edgecolor='y', facecolor=(254/255.0,240/255.0,0.0))
+        rect_2sigma = Rectangle((twoS, 0), 2*(avg-twoS), n_points-1+top_pad, linewidth=0, alpha=0.9, edgecolor='g', facecolor=(30/255.0,255/255.0,4/255.0))
+        rect_3sigma = Rectangle((threeS, 0), 2*(avg-threeS), n_points-1+top_pad, linewidth=0, alpha=0.9, edgecolor='b', facecolor=(30/255.0,190/255.0,255/255.0))
         ax.add_patch(rect_3sigma)
         ax.add_patch(rect_2sigma)
         ax.add_patch(rect_1sigma)
         for name in names:
             if name == "Average" and not show_average: continue
-            ax.errorbar(try_sq[week]["combined"][name], iter, xerr=err*try_sq[week]["combined"][name], fmt="o", color='xkcd:black',ecolor='grey',ms=15)
-            ax.text(-0.7,iter,str(name),size=15,verticalalignment='center')
+            ax.errorbar(try_sq[name], iter, xerr=errors[week][name], fmt="o", color='xkcd:black',ecolor='black',ms=15,lw=4)
+            ax.text(max_x*-0.7,iter,str(name),size=15,verticalalignment='center')
             if draw_markers:
                 if name == "Average":
-                    ax.scatter(-1.0,iter,1500,"gray",edgecolors='black',marker="*")
+                    ax.scatter(max_x*-1.0,iter,1500,"gray",edgecolors='black',marker="*")
                 else:
-                    imscatter(-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
+                    imscatter(max_x*-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
             iter+=1
 
-        ax.set_xlim(-1.25,1.25)
-        ax.set_ylim(0,(iter-1)+ceil(iter/3))
-        ax.set_xlabel(r"Try${}^{2}$/max(Try${}^{2}$)",size=15,labelpad=10)
+
+        ax.set_xlim(-x_lim,x_lim)
+        ax.set_ylim(bottom_pad,n_points)
+        if do_norm:
+            ax.set_xlabel(r"Try${}^{2}$/max(Try${}^{2}$)",size=15,labelpad=10)
+        else:
+            ax.set_xlabel(r"Try${}^{2}$",size=15,labelpad=10)
         ax.tick_params(axis='x', which='major', labelsize=15)
-        ax.axvline(avg, ymax=iter/(iter+1.5)+0.05, linestyle='--', lw=1.5, color='black', alpha=1)
+        rect_toy_error = Rectangle((avg-err, 0), (2*err), n_points-1+top_pad, linewidth=0, alpha=0.9, edgecolor='grey', fill=False, hatch='/')
+        ax.add_patch(rect_toy_error)
+        ax.vlines(avg, ymin=0, ymax=n_points-1+top_pad, linestyle='--', lw=1.5, color='black', alpha=1)
         ax.axes.get_yaxis().set_visible(False)
         ax.axes.spines[['top','right','left']].set_visible(False)
-        ax.set_title("{}: Significance".format(str(week)),size=22,pad=15)
+        ax.set_title("{}: Significance".format(str(week)),size=22,pad=title_pad*n_points)
 
         legend_elements = [Line2D([0], [0], color='black', linestyle='--', lw=1.5, label='Avg random'),
                            Patch(facecolor=(254/255.0,240/255.0,0.0), edgecolor='y', linewidth=0, alpha=0.9, label=r'$\pm 1 \sigma$'),
@@ -261,50 +387,6 @@ def plot_significance(axs,n_toys,game_info,try_sq,mean_random,sigmas,markers,dra
                            Patch(facecolor=(30/255.0,190/255.0,255/255.0), edgecolor='b', linewidth=0, alpha=0.9, label=r'$\pm 3 \sigma$'),
                           ]
 
-        ax.legend(handles=legend_elements, loc=(0.525,leg_offset),fontsize=18)
-
-
-#Make Overall Try^2 Ranking plot for each week and the full tournament
-#ToDo: Add errors
-#Options:
-#axs -> N suplots, one for each match
-#game_info -> #game information for all weeks, Shape is: game_info["WeekX"]: [ [list_of_games_as_string_tuple],{predictions_dict},{final_score_dict} ]
-#try_sq -> Try^2 values calculated per week, shape is: try_sq["WeekX"]:{'player1': Try^2, 'player2': Try^2,...}
-#markers -> Dictionary mapping player_name to marker image
-#FinalScore -> Final scores for each match (Optional)
-#title_pad -> Float to pad title above y-axis limit
-def plot_trysq(axs,game_info,try_sq,markers,draw_markers=True,show_average=True,title_pad=15):
-    for week_number,ax in enumerate(axs):
-        if (week_number+1) == axs.size: 
-            week = "All"
-        else:
-            week = "Week"+str(week_number+1)
-        
-        names_unsorted = game_info[week][1].keys()
-        diffs = {}
-        for name in names_unsorted:
-            diffs[name] = 0-try_sq[week]["combined"][name]
-        names = sorted(diffs, key=diffs.get)
-        
-        iter=1
-        for name in names:
-            if name not in try_sq[week]["combined"].keys():continue
-            if name == "Average" and not show_average: continue
-            ax.errorbar(try_sq[week]["combined"][name], iter, xerr=0, fmt="o", color='xkcd:black',ecolor='grey',ms=15)
-            ax.text(-0.7,iter,str(name),size=15,verticalalignment='center')
-            if draw_markers:
-                if name == "Average":
-                    ax.scatter(-1.0,iter,1500,"gray",edgecolors='black',marker="*")
-                else:
-                    imscatter(-1.0, iter, markers[name][0], zoom=markers[name][1]*0.9, ax=ax, opacity=1)
-            iter+=1
-
-        ax.set_xlim(-1.25,1.25)
-        ax.set_ylim(0,(iter-1)+ceil(iter/5))
-        ax.set_xlabel(r"Try${}^{2}$/max(Try${}^{2}$)",size=15,labelpad=10)
-        ax.tick_params(axis='x', which='major', labelsize=15)
-        #ax.axvline(0, ymax=iter/(iter+2.5)+0.02, linestyle='--', lw=1.5, color='black', alpha=1)
-        ax.axvline(0, ymax=iter/(iter+1)+0.1, linestyle='--', lw=1.5, color='black', alpha=1)
-        ax.axes.get_yaxis().set_visible(False)
-        ax.axes.spines[['top','right','left']].set_visible(False)
-        ax.set_title("{}: Try2".format(str(week)),size=22,pad=title_pad)
+        ax.legend(handles=legend_elements, loc=(0.45+(threeS/x_lim),(n_points-1+top_pad)/(n_points)), fontsize=22)
+        ax.xaxis.set_major_formatter(mticker.FuncFormatter(remove_negative_tick_labels))
+        ax_num+=1
