@@ -12,7 +12,7 @@ Each week's predictions must be input manually into a suitable data file: [Examp
 
 The main analysis code lives within the [SixNationasPredictions notebook](SixNationasPredictions_Example.ipynb) with dedicated plotting and analysis functions in [PlottingScripts](Scripts/PlottingScripts.py) and [AnalysisScripts](Scripts/AnalysisScripts.py) respectively.
 
-A web dashboard of the example plots is avaliable [here](https://jjamieson12.github.io/SixNations_PredictionAnalysis/index.html)
+A live dashboard of plots for the 2025 tournament is avaliable [here](https://jjamieson12.github.io/SixNations_PredictionAnalysis/index.html)
 
 Have fun!
 
