@@ -158,6 +158,45 @@ def calculate_average_prediction(predictions):
     predictions["Average"] = {}
     for game,pred in average_predictions.items():
         predictions["Average"][game] = np.mean(pred,axis=0)
+
+def find_best_predictions(finalscores,predictions):
+    winners = ["?","?","?"]
+    bestpreds = {}
+    i = 0
+    for game,finalscore in finalscores.items():
+        frontrunner = 999
+        max_var_front = 999
+        for player,prediction in predictions.items():
+            var_up = abs(prediction[game][0] - finalscore[0])
+            var_down = abs(prediction[game][1] - finalscore[1])
+            var = (var_up + var_down)/2.0
+            if var < frontrunner:
+                winners[i] = player
+                bestpreds[game] = prediction[game]
+                frontrunner = var
+                max_var_front = max(var_up,var_down)
+            elif var == frontrunner:
+                #For equal scores pick the one with the smallest larger variance
+                max_var = max(var_up,var_down)
+                if max_var < max_var_front:
+                    winners[i] = player
+                    bestpreds[game] = prediction[game]
+                    frontrunner = var
+                    max_var_front = max_var
+        i+=1
+    return winners,bestpreds
+
+
+
     
+def final_score_to_string(finalscores,game_number):
+
+    x = game_number-1
+    scorestring = "{} {} -- {} {}".format(list(finalscores.keys())[x][0],
+                                          list(finalscores.values())[x][0],
+                                          list(finalscores.values())[x][1],
+                                          list(finalscores.keys())[x][1])
+    return scorestring
+
 
 

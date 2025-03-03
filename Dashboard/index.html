@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example 6-Nations Predictions</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./style_6N.css">
+    <!-- for LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+</head>
+<body>
+    <nav class="navbar navbar-dark navbar-expand-lg w-100">
+
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">&nbsp Home 🏠</a>
+            <a class="navbar-brand" href="https://github.com/jjamieson12/SixNations_PredictionAnalysis">&nbsp Code 🐙</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1 class="text-center">6-Nations Predictive Analysis</h1>
+        <h2 class="text-center">🏉 🏴󠁧󠁢󠁳󠁣󠁴󠁿🏴󠁧󠁢󠁷󠁬󠁳󠁿🏴󠁧󠁢󠁥󠁮󠁧󠁿🇮🇪🇮🇹🇫🇷 🏉</h2>
+
+        <div class="section">
+            <div class="row align-items-center">
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <h3><u>Weekly scores:</u></h3>
+                    &nbsp;
+                    <p>A two-dimensional plot for each game showing player predictions compared to the final result in <span class="outlined-text" style="--inner-color: rgb(255, 0, 0);">red</span>.<br>
+                        &nbsp;<br>
+                        The <span class="outlined-text" style="--inner-color: rgb(52, 52, 52);">grey</span> star indicates the average of all predictions for a specific game.<br>
+                        &nbsp;<br>
+                        Coloured bands show the expected bounds of alternative results based on dropped or gained scores for either team.<br>
+                        &nbsp;<br>
+                        The Win/loss line indicates regions of phase space in which predictions correctly or incorrectly predicted the game winner.
+                    </p>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center">
+                    <div class="image-container">
+                        <img src="../Plots/Week1/SixN_Week1_Game2_Example.png" class="img-fluid fixed-size" alt="Example Score Plot">
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <div class="d-none d-lg-block">
+                        <ul class="list-unstyled">
+                            <li><a href="week1_game.html" class="btn btn-primary d-block mb-2">Week 1</a></li>
+                            <li><a href="week2_game.html" class="btn btn-primary d-block mb-2">Week 2</a></li>
+                            <li><a href="week3_game.html" class="btn btn-danger disabled d-block mb-2">Week 3</a></li> <!-- Red and disabled -->
+                            <li><a href="week4_game.html" class="btn btn-danger disabled d-block mb-2">Week 4</a></li> <!-- Red and disabled -->
+                            <li><a href="week5_game.html" class="btn btn-danger disabled d-block mb-2">Week 5</a></li> <!-- Red and disabled -->
+                        </ul>
+                    </div>
+                    <div class="d-lg-none text-center mt-3">
+                        <a href="week1_game.html" class="btn btn-primary">Week 1</a>
+                        <a href="week2_game.html" class="btn btn-primary">Week 2</a>
+                        <a href="week3_game.html" class="btn btn-danger disabled">Week 3</a>
+                        <a href="week4_game.html" class="btn btn-danger disabled">Week 4</a>
+                        <a href="week5_game.html" class="btn btn-danger disabled">Week 5</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="row align-items-center">
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <h3><u>Weekly rankings:</u></h3>
+                    <p>A ranking plot showing the variances and overall predictive success for each player for each game.<br>
+                        &nbsp;<br>
+                        The <span class="outlined-text" style="--inner-color: rgb(3, 3, 75);">blue</span> (<span class="outlined-text" style="--inner-color: rgb(170, 116, 9);">gold</span>) bars 
+                        indicate the difference between the home (away) prediction and the true result (P-T) normalised over the maximum difference for any player.<br>
+                        &nbsp;<br>
+                        The metric of success for a prediction is the Try\({}^2\) value for which lower is better (think \(\chi^{2}\)). 
+                        This is the total normalised difference from the final result reduced by a factor of 0.9 if the winner was correctly chosen.<br>
+                        &nbsp;<br>
+                        The errors indicate \(1/\sigma^{avg}\), where \(\sigma^{avg}\) is the average variance for all predictions in the chosen game.
+                    </p>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center">
+                    <div class="image-container">
+                        <img src="../Plots/Week1/SixN_Week1_Rankings_Game2_Example.png" class="img-fluid fixed-size" alt="Example Ranking Plot">
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <div class="d-none d-lg-block">
+                        <ul class="list-unstyled">
+                            <li><a href="week1_ranking.html" class="btn btn-primary d-block mb-2">Week 1</a></li>
+                            <li><a href="week2_ranking.html" class="btn btn-primary d-block mb-2">Week 2</a></li>
+                            <li><a href="week3_ranking.html" class="btn btn-danger disabled d-block mb-2">Week 3</a></li> <!-- Red and disabled -->
+                            <li><a href="week4_ranking.html" class="btn btn-danger disabled d-block mb-2">Week 4</a></li> <!-- Red and disabled -->
+                            <li><a href="week5_ranking.html" class="btn btn-danger disabled d-block mb-2">Week 5</a></li> <!-- Red and disabled -->
+                        </ul>
+                    </div>
+                    <div class="d-lg-none text-center mt-3">
+                        <a href="week1_ranking.html" class="btn btn-primary">Week 1</a>
+                        <a href="week2_ranking.html" class="btn btn-primary">Week 2</a>
+                        <a href="week3_ranking.html" class="btn btn-danger disabled">Week 3</a>
+                        <a href="week4_ranking.html" class="btn btn-danger disabled">Week 4</a>
+                        <a href="week5_ranking.html" class="btn btn-danger disabled">Week 5</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="row align-items-center">
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <h3><u>Tournament rankings:</u></h3>
+                    <p>Average ranking plot showing the mean variance and success for each player for each week, and over the full tournament.<br>
+                        &nbsp;<br>
+                        The <span class="outlined-text" style="--inner-color: rgb(3, 3, 75);">blue</span> (<span class="outlined-text" style="--inner-color: rgb(170, 116, 9);">gold</span>) bars 
+                        indicate the absolute mean difference between the home (away) prediction and the true result (|P-T|), 
+                        shown un-normalised and with away results made negative for visualisation.<br>
+                        &nbsp;<br>
+                        The Try\({}^2\) value is the average of all absolute difference from the final result mutliplied by the same factor of 0.9 for a correct win prediction.<br>
+                        &nbsp;<br>
+                        The error bars show the standard error on the mean for each set of predictions.
+                    </p>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center">
+                    <div class="image-container">
+                        <img src="../Plots/TournamentRanking/SixN_Tournament_Rankings_Week2_Example.png" class="img-fluid fixed-size" alt="Example Tournament Ranking Plot">
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <div class="d-none d-lg-block">
+                        <ul class="list-unstyled">
+                            <li><a href="tournament_ranking.html" class="btn btn-primary d-block mb-2">Full tournament</a></li>
+                        </ul>
+                    </div>
+                    <div class="d-lg-none text-center mt-3">
+                        <a href="tournament_ranking.html" class="btn btn-primary">Full tournament</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="row align-items-center">
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <h3><u>Total statistical signficance:</u></h3>
+                    <p>Statistical significance of each player's predictions compared to random guesses, assessed per week, and over the full tournament.<br>
+                        &nbsp;<br>
+                        A series of toy predictions are produced by picking a random score between 0 and 50 for each team.<br>
+                        &nbsp;<br>
+                        The dashed line shows the mean of the normalised Try\({}^2\) distribution calculated for the ensemble of toy predictions, 
+                        while the coloured bands indicate \(\pm\)1,2,3 standard deviations from the mean.<br>
+                        &nbsp;<br>
+                        The points are each player's average Try\({}^2\) score, 
+                        indicating the statistical significance of their predictions to <b>not</b> be randomly generated.<br>
+                        &nbsp;<br>
+                        The dashed area indicates the statistical error from the limited number of toys, 
+                        while the error bars show the standard error on the mean for each set of predictions.
+                    </p>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center">
+                    <div class="image-container">
+                        <img src="../Plots/StatSignificance/SixN_StatSignificance_Week1_Example.png" class="img-fluid fixed-size" alt="Example Significance Plot">
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-12 text-center text-lg-start">
+                    <div class="d-none d-lg-block">
+                        <ul class="list-unstyled">
+                            <li><a href="tournament_significance.html" class="btn btn-primary d-block mb-2">Full tournament</a></li>
+                        </ul>
+                    </div>
+                    <div class="d-lg-none text-center mt-3">
+                        <a href="tournament_significance.html" class="btn btn-primary">Full tournament</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
