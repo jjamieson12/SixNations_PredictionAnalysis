@@ -1,22 +1,28 @@
 from string import Template
-import numpy as np
-from PredictionData.ExamplePredictions import *
+from PredictionData.Predictions2025 import *
 from Scripts.AnalysisScripts import find_best_predictions, final_score_to_string
 
-weeks = [1,2]
+weeks = [1,2,3]
+
 finalscores = [{
-    ("France","Ireland"):(17,38),
-    ("Italy","England"):(24,27),
-    ("Wales","Scotland"):(26,27),
+    ("France","Wales"):(43,0),
+    ("Scotland","Italy"):(31,19),
+    ("Ireland","England"):(27,22),
 },
 {
-    ("Scotland","France"):(16,20),
-    ("England","Wales"):(16,14),
-    ("Ireland","Italy"):(36,0),
+    ("Italy","Wales"):(22,15),
+    ("England","France"):(26,25),
+    ("Scotland","Ireland"):(18,32),
+},
+{
+    ("Wales","Ireland"):(18,27),
+    ("England","Scotland"):(16,15),
+    ("Italy","France"):(24,73),
 }
 ]
 predictions = [predictions_wk1,
-               predictions_wk2
+               predictions_wk2,
+               predictions_wk3,
 ]
 
 # Define the input (template) and output file names
