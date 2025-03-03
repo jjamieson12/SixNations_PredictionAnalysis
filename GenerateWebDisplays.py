@@ -20,11 +20,11 @@ predictions = [predictions_wk1,
 ]
 
 # Define the input (template) and output file names
-game_template_file = "./Dashboard/Templates/template_week_game.html"
-ranking_template_file = "./Dashboard/Templates/template_week_ranking.html"
+game_template_file = "./docs/Templates/template_week_game.html"
+ranking_template_file = "./docs/Templates/template_week_ranking.html"
 
-game_output_file = "./Dashboard/weekXXX_game.html"
-ranking_output_file = "./Dashboard/weekXXX_ranking.html"
+game_output_file = "./docs/weekXXX_game.html"
+ranking_output_file = "./docs/weekXXX_ranking.html"
 
 
 # Read the template files
