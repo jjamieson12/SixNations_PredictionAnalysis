@@ -2,7 +2,7 @@ from string import Template
 from PredictionData.Predictions2025 import *
 from Scripts.AnalysisScripts import find_best_predictions, final_score_to_string
 
-weeks = [1,2,3]
+weeks = [1,2,3,4]
 
 finalscores = [{
     ("France","Wales"):(43,0),
@@ -18,11 +18,17 @@ finalscores = [{
     ("Wales","Ireland"):(18,27),
     ("England","Scotland"):(16,15),
     ("Italy","France"):(24,73),
+},
+{
+    ("Ireland","France"):(27,42),
+    ("Scotland","Wales"):(35,29),
+    ("England","Italy"):(47,24),
 }
 ]
 predictions = [predictions_wk1,
                predictions_wk2,
                predictions_wk3,
+               predictions_wk4,
 ]
 
 # Define the input (template) and output file names
@@ -49,10 +55,12 @@ for week in weeks:
     repl["FINALSCORE1"] = final_score_to_string(finalscores[week-1],1)
     repl["FINALSCORE2"] = final_score_to_string(finalscores[week-1],2)
     repl["FINALSCORE3"] = final_score_to_string(finalscores[week-1],3)
+
     names, bestpreds = find_best_predictions(finalscores[week-1],predictions[week-1])
     repl["BESTPRED1"] = final_score_to_string(bestpreds,1)
     repl["BESTPRED2"] = final_score_to_string(bestpreds,2)
     repl["BESTPRED3"] = final_score_to_string(bestpreds,3)
+    
     repl["WINNER1"] = names[0]
     repl["WINNER2"] = names[1]
     repl["WINNER3"] = names[2]
