@@ -20,6 +20,15 @@ player_markers = {
     "2024":["Assets/2024_marker.png",0.03],
 }
 
+nation_markers = {
+    "Scotland":r"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "England":r"🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "Wales":r"🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+    "Italy":r"🇮🇹",
+    "Ireland":r"🇮🇪",
+    "France":r"🇫🇷",
+}
+
 #There's almost certainly a better way to input predictions...
 #WARNING: do not use player name: "Average"
 predictions_wk1 = {
@@ -387,6 +396,99 @@ predictions_wk4 = {
         ("Ireland","France"):( 38,17 ),
         ("Scotland","Wales"):( 27,26 ),
         ("England","Italy"):( 27,24 ),
+    },
+}
+
+predictions_wk5 = {
+    "Fan":{
+        ("Italy","Ireland"):( 24,41 ),
+        ("Wales","England"):( 14,34 ),
+        ("France","Scotland"):( 38,28 ),
+    },
+    "Eels":{
+        ("Italy","Ireland"):( 20,42 ),
+        ("Wales","England"):( 9,37 ),
+        ("France","Scotland"):( 28,32 ),
+    },
+    "JJ":{
+        ("Italy","Ireland"):( 18,32 ),
+        ("Wales","England"):( 16,36 ),
+        ("France","Scotland"):( 30,18 ),
+    },
+    "Dylan":{
+        ("Italy","Ireland"):( 12,36 ),
+        ("Wales","England"):( 12,36 ),
+        ("France","Scotland"):( 28,28 ),
+    },
+    "Rory":{
+        ("Italy","Ireland"):( 14,40 ),
+        ("Wales","England"):( 18,37 ),
+        ("France","Scotland"):( 37,22 ),
+    },
+    "Dave":{
+        ("Italy","Ireland"):( 14,38 ),
+        ("Wales","England"):( 14,25 ),
+        ("France","Scotland"):( 40,14 ),
+    },
+    "Harriet":{
+        ("Italy","Ireland"):( 5,45 ), #Forgot to predict, as punishment gets worst prediction for each team
+        ("Wales","England"):( 21,32 ),
+        ("France","Scotland"):( 18,26 ),
+    },
+    "Parisa":{
+        ("Italy","Ireland"):( 12,27 ),
+        ("Wales","England"):( 10,20 ),
+        ("France","Scotland"):( 24,15 ),
+    },
+    "Giuseppe":{
+        ("Italy","Ireland"):( 10,45 ),
+        ("Wales","England"):( 17,34 ),
+        ("France","Scotland"):( 21,17 ),
+    },
+    "Anna":{
+        ("Italy","Ireland"):( 22,40 ),
+        ("Wales","England"):( 12,37 ),
+        ("France","Scotland"):( 30,20 ),
+    },
+    "Katie":{
+        ("Italy","Ireland"):( 9,22 ),
+        ("Wales","England"):( 14,12 ),
+        ("France","Scotland"):( 28,29 ),
+    },
+    "Veera":{
+        ("Italy","Ireland"):( 15,33 ),
+        ("Wales","England"):( 5,24 ),
+        ("France","Scotland"):( 38,16 ),
+    },
+    "Jay":{
+        ("Italy","Ireland"):( 20,34 ),
+        ("Wales","England"):( 13,34 ),
+        ("France","Scotland"):( 29,28 ),
+    },
+    "Paul":{
+        ("Italy","Ireland"):( 5,40 ),
+        ("Wales","England"):( 10,30 ),
+        ("France","Scotland"):( 30,22 ),
+    },
+    "Martin":{
+        ("Italy","Ireland"):( 13,28 ),
+        ("Wales","England"):( 7,26 ),
+        ("France","Scotland"):( 33,24 ),
+    },
+    "Deepstate":{
+        ("Italy","Ireland"):( 10,30 ),
+        ("Wales","England"):( 16,22 ),
+        ("France","Scotland"):( 27,15 ),
+    },
+    "Chatgpt":{
+        ("Italy","Ireland"):( 13,34 ),
+        ("Wales","England"):( 18,27 ),
+        ("France","Scotland"):( 23,20 ),
+    },
+    "2024":{
+        ("Italy","Ireland"):( 0,36 ),
+        ("Wales","England"):( 14,16 ),
+        ("France","Scotland"):( 20,16 ),
     },
 }
 

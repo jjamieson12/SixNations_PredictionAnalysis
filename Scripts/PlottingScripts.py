@@ -113,18 +113,15 @@ def draw_winloss_line(ax,y_wins,is_draw):
     y_ext = ax.get_ylim()[1] - ax.get_ylim()[0]
     ax_ratio = x_ext/y_ext
     x_skew = max(ax_ratio,1) #Skew is calculated relative to the smaller axis range
-    y_skew = max(1/ax_ratio,1)
-    grad_skew = max(y_skew,x_skew)/min(y_skew,x_skew)
-
-    angle = 45+(degrees(atan(grad_skew-1))/2.0)
-    if y_wins:
-        angle = 45-(degrees(atan(1-(1/grad_skew)))/2.0)
-        angle *= 1.09 #Fudge as the canvas is not a perfect square
 
     text_x,text_y = get_text_coords(y_wins,start_p,x_ext,y_ext,x_skew)
     if not is_draw:
-        ax.text(text_x["Correct"],text_y["Correct"],"Correct winner",rotation=angle,size=15, color='green',horizontalalignment='center',verticalalignment='center')
-        ax.text(text_x["Incorrect"],text_y["Incorrect"],"Incorrect winner",rotation=angle,size=15, color='red',horizontalalignment='center',verticalalignment='center')
+        ax.text(text_x["Correct"],text_y["Correct"],"Correct winner",rotation=45, rotation_mode='anchor',transform_rotates_text=True,size=15, color='green',horizontalalignment='center',verticalalignment='center')
+        ax.text(text_x["Incorrect"],text_y["Incorrect"],"Incorrect winner",rotation=45, rotation_mode='anchor',transform_rotates_text=True,size=15, color='red',horizontalalignment='center',verticalalignment='center')
+
+    else:
+        ax.text(text_x["Correct"],text_y["Correct"],"Incorrect winner",rotation=45, rotation_mode='anchor',transform_rotates_text=True,size=15, color='red',horizontalalignment='center',verticalalignment='center')
+        ax.text(text_x["Incorrect"],text_y["Incorrect"],"Incorrect winner",rotation=45, rotation_mode='anchor',transform_rotates_text=True,size=15, color='red',horizontalalignment='center',verticalalignment='center')
 
 
 
@@ -158,7 +155,7 @@ def plot_matches(axs,games,predictions,markers,FinalScore=None,Nexpected=3,show_
             all_x.append(FinalScore[game][0]-14)
             all_y.append(FinalScore[game][1]+14)
             all_y.append(FinalScore[game][1]-14)
-        all_pos = all_x + all_y
+
         if not axis_lims == [-1,-1,-1,-1]:
             ax.set_xlim(axis_lims[0],axis_lims[1])
             ax.set_ylim(axis_lims[2],axis_lims[3])
@@ -479,7 +476,6 @@ def plot_total_bias(axs,cumulative_bias,cumulative_overunder,markers,nation_mark
         #Nation emoji (requires emojify package)
         if draw_emoji:
             imscatter(0, y_loc, nation_markers[n], zoom=settings["emoji_size"], ax=ax, opacity=1,drawemoji=True)
-            ax.text(0.1*x_lim, y_loc, str(n), horizontalalignment='left',verticalalignment='center', fontsize=settings["plot_text_size"])
         else:
             ax.text(0, y_loc, str(n), horizontalalignment='center',verticalalignment='center', fontsize=settings["plot_text_size"])
 
@@ -510,12 +506,12 @@ def plot_total_bias(axs,cumulative_bias,cumulative_overunder,markers,nation_mark
                 bias /= norm_bias[-1]
                 est = (overunders[player][-1]/norm_overunder[-1])
 
-            ax.errorbar(bias, y_loc+settings["plot_shift"], xerr=None, fmt="o",color='xkcd:red',ecolor='black',ms=15,lw=4)
-            ax.errorbar(est, y_loc-settings["plot_shift"], xerr=None, fmt="o",color='xkcd:blue',ecolor='black',ms=15,lw=4)
-
             if draw_markers:
                 imscatter(bias, y_loc+settings["plot_shift"], markers[player][0], zoom=markers[player][1]*settings["marker_size"], ax=ax, opacity=1)
                 imscatter(est, y_loc-settings["plot_shift"], markers[player][0], zoom=markers[player][1]*settings["marker_size"], ax=ax, opacity=1)
+            else:
+                ax.errorbar(bias, y_loc+settings["plot_shift"], xerr=None, fmt="o",color='xkcd:red',ecolor='black',ms=15,lw=4)
+                ax.errorbar(est, y_loc-settings["plot_shift"], xerr=None, fmt="o",color='xkcd:blue',ecolor='black',ms=15,lw=4)
 
 
     n_plots = len(nations)
@@ -542,6 +538,8 @@ def plot_total_bias(axs,cumulative_bias,cumulative_overunder,markers,nation_mark
         ax.text(-endcap-norm_text_pad, y_text_est[i], "Performance\nUnderestimation",horizontalalignment='right',verticalalignment='center',fontsize=settings["plot_text_size"])
         ax.text(endcap+norm_text_pad, y_text_est[i], "Performance\nOverestimation",horizontalalignment='left',verticalalignment='center',fontsize=settings["plot_text_size"])
 
+    for i,n in enumerate(nations):
+        ax.text(0.1*max(all_max_bias), y_central[i], str(n), horizontalalignment='left',verticalalignment='center', fontsize=settings["plot_text_size"])
 
     ax.axes.get_xaxis().set_visible(False)
     ax.axes.get_yaxis().set_visible(False)
