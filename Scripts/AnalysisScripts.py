@@ -186,9 +186,6 @@ def find_best_predictions(finalscores,predictions):
         i+=1
     return winners,bestpreds
 
-
-
-    
 def final_score_to_string(finalscores,game_number):
 
     x = game_number-1
@@ -198,5 +195,152 @@ def final_score_to_string(finalscores,game_number):
                                           list(finalscores.keys())[x][1])
     return scorestring
 
+def GetWinDrawLosses(nation,games,predictions,mode="weekly"):
+    n_win = []
+    n_draw = []
+    n_loss = []
+    nation_games = [] #Assume input is all games and pick out only those the given nation plays in
+    for game in games:
+        if nation in game:
+            nation_games.append(game)
+    for x,week_game in enumerate(nation_games):
+        if x == 0:
+            n_win.append(0)
+            n_draw.append(0)
+            n_loss.append(0)
+        else:
+            if mode=="cumulative":
+                n_win.append(n_win[x-1])
+                n_draw.append(n_draw[x-1])
+                n_loss.append(n_loss[x-1])
+            else:
+                n_win.append(0)
+                n_draw.append(0)
+                n_loss.append(0)
+        index = week_game.index(nation)
+        for player, prediction in predictions.items():
+            if player == "Average":
+                continue
+            if week_game not in prediction.keys():
+                continue
+            if prediction[week_game][index] > prediction[week_game][1-index]:
+                n_win[x] += 1
+            elif prediction[week_game][index] == prediction[week_game][1-index]:
+                n_draw[x] += 1
+            else:
+                n_loss[x] += 1
+    #if total requested just return single values for number of wins,draw, and losses over whole tournament                 
+    if mode=="Total":
+        n_win = np.sum(n_win)
+        n_draw = np.sum(n_draw)
+        n_loss = np.sum(n_loss)
 
+    return n_win, n_draw, n_loss
+
+
+def GetCumulativeBias(nations,games,predictions,FinalScores,metric="skew",predictwin_SF=1.2):
+    #For each team calculate relative bias and under/overestimation for each player cumulatively as predictions come in
+    #For metric = variance: 
+    #   bias = cumulative difference in score predictions vs the average prediction for given nation, n: (predicted_n - average_n)
+    #   overunder = cumulative difference in score predictions vs the true results for given nation, n: (predicted_n - true_n)
+    #for metric = skew 
+    #   bias = cumulative value of: (predicted_n - average_n)  - (predicted_o - average_o) * (N_preddiff/N_predsame) * predictwin_SF
+    #   overunder = cumulative value of: (prediction_n/(prediction_n+prediction_o))*100.0 - (true_n/(true_n+true_o))*100.0, 
+    #   where _n indicates the score for the given nation, and _o indicates the score for their opponent in each match
+
+    cumulative_bias = {}
+    cumulative_overunder = {}
+    total_bias = {}
+    total_overunder = {}
+
+    for n in nations:
+        cumulative_bias[n] = {}
+        cumulative_overunder[n] = {}
+        total_bias[n] = {}
+        total_overunder[n] = {}
+        n_win = []
+        n_draw = []
+        n_loss = []
+        nation_games = []
+        for game in games:
+            if n in game:
+                nation_games.append(game)
+        #If we are doing the skew metric then calculate how many draws, wins and losses total
+        if metric == "skew":
+            n_win, n_draw, n_loss = GetWinDrawLosses(n,games,predictions,mode="cumulative")
+
+        for x,week_game in enumerate(nation_games):
+            index = week_game.index(n)
+            FinalScore = FinalScores[week_game][index]
+            Average = predictions["Average"][week_game][index]
+            FinalScore_oth = FinalScores[week_game][1-index]
+            Average_oth = predictions["Average"][week_game][1-index]
+            percent_finalscore = (FinalScore/(FinalScore+FinalScore_oth))*100.0
+
+            for player, prediction in predictions.items():
+                if player == "Average":
+                    continue
+                if player not in total_bias[n].keys():
+                    total_bias[n][player] = []
+                    total_overunder[n][player] = []
+                    cumulative_bias[n][player] = []
+                    cumulative_overunder[n][player] = []
+                if week_game not in prediction.keys():
+                    continue #If player hasn't made prediction for game just skip and cumulative bias will reflect this
+                bias = prediction[week_game][index] - Average
+                overunder = prediction[week_game][index] - FinalScore
+                #Skew metric is more complex
+                if metric == "skew":
+                    diffoversame = 1.0
+                    predictwin = 1.0
+                    if prediction[week_game][index] > prediction[week_game][1-index]:
+                        diffoversame = (n_draw[x]+n_loss[x])/float(n_win[x])
+                        predictwin = predictwin_SF
+                    elif prediction[week_game][index] == prediction[week_game][1-index]:
+                        #Draw predictions are rare so shouldn't be penalised too heavily but should increse skew for going against the grain
+                        if min(n_win[x],n_loss[x]) == 0:
+                            diffoversame = 1.0
+                        else:
+                            diffoversame = (max(n_win[x],n_loss[x]) + n_draw[x])/float(min(n_win[x],n_loss[x]))
+                            predictwin = predictwin_SF*-1.0
+                    else:
+                        diffoversame = (n_draw[x]+n_win[x])/float(n_loss[x])
+                    if diffoversame == 0:
+                        diffoversame = 0.5 #If everyone predicts in the same direction limit the skew
+                    bias = (bias - (prediction[week_game][1-index] - Average_oth)) * diffoversame * predictwin
+                    overunder = (prediction[week_game][index]/(prediction[week_game][index]+prediction[week_game][1-index]))*100.0 - percent_finalscore
+                    #overunder = (overunder - (prediction[week_game][1-index] - FinalScore_oth)) #Alternative simpler overunder but I think percentage is better
+
+                #Keep track of the total bias as we add weeks to get the cumulative results
+                total_bias[n][player].append(bias) 
+                total_overunder[n][player].append(overunder)
+            
+            for player,bias in total_bias[n].items():
+                if len(total_bias[n][player]) == 0:
+                    cumulative_bias[n][player].append(0)
+                    cumulative_overunder[n][player].append(0)
+                else:
+                    cumulative_bias[n][player].append(np.mean(total_bias[n][player]))
+                    cumulative_overunder[n][player].append(np.mean(total_overunder[n][player]))
+
+    return cumulative_bias, cumulative_overunder
+
+def GetNorm_cumulative_bias(biases,overunders):
+    norm_bias = []
+    norm_overunder = []
+    n_weeks = 0
+    for player, bias_set in biases.items():
+        n_weeks = len(bias_set)
+        break #a bit clunky but works
+
+    for cumul in range(n_weeks):
+        all_bias = []
+        all_overunder = []
+        for player, bias_set in biases.items():
+            all_bias.append(abs(bias_set[cumul]))
+            all_overunder.append(abs(overunders[player][cumul]))
+        norm_bias.append(np.max(all_bias))
+        norm_overunder.append(np.max(all_overunder))
+
+    return norm_bias, norm_overunder
 

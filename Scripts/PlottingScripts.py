@@ -5,15 +5,20 @@ from matplotlib.patches import Circle, Rectangle, Patch
 from matplotlib.lines import Line2D
 from matplotlib.transforms import Bbox
 import matplotlib.ticker as mticker
-from .AnalysisScripts import calc_trysq
+from .AnalysisScripts import calc_trysq, GetNorm_cumulative_bias
 from math import sqrt, atan, degrees
+from imojify import imojify
+
 
 #Replace marker with scaled png (from: https://stackoverflow.com/a/22570069)
-def imscatter(x, y, image, ax=None, zoom=1, opacity=1):
+def imscatter(x, y, image, ax=None, zoom=1, opacity=1,drawemoji=False):
     if ax is None:
         ax = plt.gca()
     try:
-        image = plt.imread(image)
+        if drawemoji:
+            image = plt.imread(imojify.get_img_path(image))
+        else:
+            image = plt.imread(image)
     except TypeError:
         # Likely already an array...
         pass
@@ -390,3 +395,158 @@ def plot_significance(axs,n_toys,game_info,try_sqs,errors,mean_random,sigmas,mar
         ax.legend(handles=legend_elements, loc=(0.45+(threeS/x_lim),(n_points-1+top_pad)/(n_points)), fontsize=22)
         ax.xaxis.set_major_formatter(mticker.FuncFormatter(remove_negative_tick_labels))
         ax_num+=1
+
+
+#Make plot of total bias and over/underestimation for each player for each team and combine on single plot
+#Options:
+#axs -> Single suplot, one for each all 6 nations
+#cumulative_bias -> Dictionary with cumulative bias calculations for each player for each team (output of GetCumulativeBias)
+#cumulative_overunder -> Dictionary with cumulative over/underestimation percentage calculations for each player for each team (output of GetCumulativeBias)
+#markers -> Dictionary mapping player_name to marker image
+#nation_markers -> Dictionary mapping country name to relevent flag emoji
+#bias_metric -> Option for which metric was used for bias calculation (changes the axis labels), options are: "skew" or "variance"
+#draw_markers -> Bool to turn on/off custom player markers
+#draw_emoji -> Bool to turn on/off flag emoji to label each country's plot, off just prints the name
+#plot_settings -> Dictionary of modifiable plot parameters
+    # plot_seperation -> Additional Y spacing beytween plot blocks (1 country = 1 block)
+    # plot_shift -> Y spacing for the bias and over/under lines from the central plot location
+    # axis_shift -> Y spacing for the internal axes objects from central plot location
+    # endcap_pad -> Extra X extension beyond max value to place endcaps of bias and over/under lines
+    # endcap_size -> Length of endcaps
+    # emoji_size -> Size of flag emoji used to label plots
+    # marker_size -> Additional scale factor for custom player markers
+    # label_pad -> Y padding between axis and tick labels on internal axes
+    # label_text_size -> Font size for internal axes tick labels
+    # text_pad -> X padding between endcaps and bias labels (SF multiplied by max x-value to get consistent factor for all plots)
+    # plot_text_size -> Fontsize for bias and country labels
+    # tick_length -> Y height of individual ticks in internal axes
+    # n_ticks -> Number of ticks to use (odd numbers are best)
+    # w_padding -> Padding to add additional width to sides of full plot (SF multiplied by max x-value to get consistent factor for all plots)
+    # h_padding -> Padding to add additional height to full plot (absolute value)
+
+def plot_total_bias(axs,cumulative_bias,cumulative_overunder,markers,nation_markers,bias_metric="skew",draw_markers=True,draw_emoji=True,do_norm=True,
+                    plot_settings={
+                        "plot_seperation":0.5,"plot_shift":0.4,"axis_shift":0.19,
+                        "endcap_pad":1.2,"endcap_size":0.2,
+                        "emoji_size":0.18,"marker_size":0.5,
+                        "label_pad":0.03,"label_text_size":8,
+                        "text_pad":0.02, "plot_text_size":9,
+                        "tick_length":0.09, "n_ticks":5,
+                        "w_padding":1.75,"h_padding":0.5}):
+    
+    settings={"plot_seperation":0.5,"plot_shift":0.4,"axis_shift":0.19,"endcap_pad":1.2,"endcap_size":0.2,"w_padding":1.75,"h_padding":0.5,"emoji_size":0.18,"marker_size":0.5,
+              "label_pad":0.03,"label_text_size":8,"text_pad":0.02, "plot_text_size":9,"tick_length":0.06, "n_ticks":5}
+    
+
+    for key,val in plot_settings.items():
+        if key in settings.keys():
+            settings[key] = val
+        else:
+            print(str(key)+"is not a valid setting")
+
+    ax = axs
+    if isinstance(axs, np.ndarray):
+        print("WARNING: Expected single axis, got multiple, only plotting on first subplot")
+        ax = axs[0]
+    nations = cumulative_bias.keys()
+    all_max_bias = []
+    all_endcaps = []
+    for n_plot,n in enumerate(cumulative_bias.keys()):
+        biases = cumulative_bias[n]
+        overunders = cumulative_overunder[n]
+        y_loc = n_plot + n_plot*settings["plot_seperation"]
+
+        #First we need the normalisation factors for each cumulation
+        norm_bias,norm_overunder = GetNorm_cumulative_bias(biases,overunders)
+
+        #Base axis position off of bias and scale numbers for overunder-estimation to fit
+        x_lim = norm_bias[-1]
+        if do_norm:
+            x_lim = 1.0
+
+        endcap = x_lim*settings["endcap_pad"]
+        tick_x = np.linspace(-x_lim,x_lim,settings["n_ticks"])
+        
+        all_max_bias.append(x_lim)
+        all_endcaps.append(endcap)
+
+        #For each nation we need 2 sets of plots each with their own custom axis to fit into a single y value 
+        #center lines
+        ax.hlines([y_loc-settings["plot_shift"],y_loc+settings["plot_shift"]], xmin=[-endcap], xmax=[endcap], linestyle='-', color='xkcd:red', alpha=1)
+        ax.vlines([-endcap,endcap], ymin=[y_loc-settings["plot_shift"]-(settings["endcap_size"]/2.0)], ymax=[y_loc-settings["plot_shift"]+(settings["endcap_size"]/2.0)], linestyle='-', color='black', alpha=1)
+        ax.vlines([-endcap,endcap], ymin=[y_loc+settings["plot_shift"]-(settings["endcap_size"]/2.0)], ymax=[y_loc+settings["plot_shift"]+(settings["endcap_size"]/2.0)], linestyle='-', color='black', alpha=1)
+
+        #Nation emoji (requires emojify package)
+        if draw_emoji:
+            imscatter(0, y_loc, nation_markers[n], zoom=settings["emoji_size"], ax=ax, opacity=1,drawemoji=True)
+            ax.text(0.1*x_lim, y_loc, str(n), horizontalalignment='left',verticalalignment='center', fontsize=settings["plot_text_size"])
+        else:
+            ax.text(0, y_loc, str(n), horizontalalignment='center',verticalalignment='center', fontsize=settings["plot_text_size"])
+
+        #internal axes
+        ax.hlines([y_loc-settings["axis_shift"],y_loc+settings["axis_shift"]], xmin=[-x_lim], xmax=[x_lim], linestyle='-', color='black', alpha=1)
+        ax.vlines([tick_x], ymin=[y_loc+settings["axis_shift"]], ymax=[y_loc+settings["axis_shift"]+settings["tick_length"]], linestyle='-', color='black', alpha=1)
+        ax.vlines([tick_x], ymin=[y_loc-settings["axis_shift"]-settings["tick_length"]], ymax=[y_loc-settings["axis_shift"]], linestyle='-', color='black', alpha=1)
+
+        #Axis point values (upper is bias, lower is estimation)
+        for x in tick_x:
+            ax.text(x,y_loc+settings["axis_shift"]-settings["label_pad"],str(round(x,2)),horizontalalignment='center',verticalalignment='top',fontsize=settings["label_text_size"])
+            scaled_x = (x/norm_bias[-1])*norm_overunder[-1]
+            if bias_metric != "skew": #If not skew then do normalisation and show as arbitrary metric
+                if do_norm: 
+                    ax.text(x,y_loc-settings["axis_shift"]+settings["label_pad"],str(round(x,1)),horizontalalignment='center',fontsize=settings["label_text_size"])
+                else:
+                    ax.text(x,y_loc-settings["axis_shift"]+settings["label_pad"],str(round(scaled_x,1)),horizontalalignment='center',fontsize=settings["label_text_size"])
+            else: #If skew don't normalise and show as percentage
+                if do_norm:
+                    scaled_x = x*norm_overunder[-1]
+                ax.text(x,y_loc-settings["axis_shift"]+settings["label_pad"],str(round(scaled_x,1))+"%",horizontalalignment='center',fontsize=settings["label_text_size"])
+
+
+        for player, bias_set in biases.items():
+            bias = bias_set[-1]
+            est = (overunders[player][-1]/norm_overunder[-1])*norm_bias[-1] #If not normalised need to re-scale to fit into bias-based plot
+            if do_norm:
+                bias /= norm_bias[-1]
+                est = (overunders[player][-1]/norm_overunder[-1])
+
+            ax.errorbar(bias, y_loc+settings["plot_shift"], xerr=None, fmt="o",color='xkcd:red',ecolor='black',ms=15,lw=4)
+            ax.errorbar(est, y_loc-settings["plot_shift"], xerr=None, fmt="o",color='xkcd:blue',ecolor='black',ms=15,lw=4)
+
+            if draw_markers:
+                imscatter(bias, y_loc+settings["plot_shift"], markers[player][0], zoom=markers[player][1]*settings["marker_size"], ax=ax, opacity=1)
+                imscatter(est, y_loc-settings["plot_shift"], markers[player][0], zoom=markers[player][1]*settings["marker_size"], ax=ax, opacity=1)
+
+
+    n_plots = len(nations)
+    max_central_y = n_plots-1+(n_plots-1)*settings["plot_seperation"]
+    y_mins_bias = np.linspace(0+settings["axis_shift"],max_central_y+settings["axis_shift"],n_plots)
+    y_maxs_bias = np.linspace(0+settings["plot_shift"]+settings["axis_shift"],max_central_y+settings["plot_shift"]+settings["axis_shift"],n_plots)
+    y_mins_est = np.linspace(0-settings["plot_shift"]-settings["axis_shift"],max_central_y-settings["plot_shift"]-settings["axis_shift"],n_plots)
+    y_maxs_est = np.linspace(0-settings["axis_shift"],max_central_y-settings["axis_shift"],n_plots)
+
+    ax.vlines([0]*n_plots, ymin=[y_mins_bias], ymax=[y_maxs_bias], linestyle='--', color='black', alpha=1)
+    ax.vlines([0]*n_plots, ymin=[y_mins_est], ymax=[y_maxs_est], linestyle='--', color='black', alpha=1)
+
+    #Plot label text
+    norm_text_pad = max(all_endcaps)*settings["text_pad"]
+    y_text_bias = np.linspace(0+settings["plot_shift"],max_central_y+settings["plot_shift"],n_plots)
+    y_text_est = np.linspace(0-settings["plot_shift"],max_central_y-settings["plot_shift"],n_plots)
+    y_central = np.linspace(0,max_central_y,n_plots)
+
+
+    for i,endcap in enumerate(all_endcaps):
+        ax.text(-endcap-norm_text_pad, y_text_bias[i], "Negative\nBias",horizontalalignment='right',verticalalignment='center',fontsize=settings["plot_text_size"])
+        ax.text(endcap+norm_text_pad, y_text_bias[i], "Positive\nBias",horizontalalignment='left',verticalalignment='center',fontsize=settings["plot_text_size"])
+
+        ax.text(-endcap-norm_text_pad, y_text_est[i], "Performance\nUnderestimation",horizontalalignment='right',verticalalignment='center',fontsize=settings["plot_text_size"])
+        ax.text(endcap+norm_text_pad, y_text_est[i], "Performance\nOverestimation",horizontalalignment='left',verticalalignment='center',fontsize=settings["plot_text_size"])
+
+
+    ax.axes.get_xaxis().set_visible(False)
+    ax.axes.get_yaxis().set_visible(False)
+    ax.axes.spines[['bottom','top','right','left']].set_visible(False)
+
+    ax.set_xbound(-1.0*settings["w_padding"]*max(all_max_bias),settings["w_padding"]*max(all_max_bias))
+    ax.set_ybound(-1.0*settings["h_padding"],y_loc+settings["h_padding"]) #use final y_loc
+

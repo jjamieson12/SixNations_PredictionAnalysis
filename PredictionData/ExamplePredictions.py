@@ -5,6 +5,15 @@ player_markers = {
     "player3":["Assets/MarkerPlayer3.png",0.15],
 }
 
+nation_markers = {
+    "Scotland":r"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "England":r"🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "Wales":r"🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+    "Italy":r"🇮🇹",
+    "Ireland":r"🇮🇪",
+    "France":r"🇫🇷",
+}
+
 #There's almost certainly a better way to input predictions...
 #WARNING: do not use player name: "Average"
 predictions_wk1 = {
